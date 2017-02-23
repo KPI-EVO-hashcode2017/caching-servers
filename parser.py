@@ -1,4 +1,5 @@
 from collections import defaultdict
+import numpy as np
 
 
 def readints(line):
@@ -6,35 +7,37 @@ def readints(line):
 
 
 def readfile(filename):
-    videosizes = []
-    endpoints = []
-    requests = defaultdict(dict)
     with open(filename, 'r') as file_in:
-        V, E, R, C, X = readints(next(file_in))
-        videosizes = readints(next(file_in))
-        for e_id in range(E):
-            e_latency, cache_servers = readints(next(file_in))
-            endpoint = {
-                'latency': e_latency,
-                'cache_servers': [],
-            }
+        num_videos, num_endpoints, req_descriptions, num_caches, capacity = (
+            readints(next(file_in))
+        )
+        videosizes = np.array(list(readints(next(file_in))))
+        dc = np.empty(num_endpoints)
+        e2c = np.full((num_endpoints, num_caches), np.inf)
+        e2v = np.full((num_endpoints, num_videos), 0)
+
+        for e_id in range(num_endpoints):
+            latency, cache_servers = readints(next(file_in))
+            dc[e_id] = latency
+
             for _ in range(cache_servers):
                 server_id, server_latency = readints(next(file_in))
-                endpoint['cache_servers'].append({
-                    'id': server_id,
-                    'latency': server_latency,
-                })
-            endpoints.append(endpoint)
-        for _ in range(R):
+                e2c[e_id][server_id] = server_latency
+        for _ in range(req_descriptions):
             video_id, endpoint_id, requests_num = readints(next(file_in))
-            requests[video_id][endpoint_id] = requests_num
+            e2v[endpoint_id][video_id] = requests_num
+            
     return {
-        'sizes': videosizes,
-        'endpoints': endpoints,
-        'requests': requests,
+        'cache_size': capacity,
+        'num_videos': num_videos,
+        'num_endpoints': num_endpoints,
+        'num_caches': num_caches,
+        'data_center_latency': dc,
+        'video_sizes': videosizes,
+        'endpoint_cache_latency': e2c,
+        'endpoint_video_requests': e2v,
     }
 
 
-from pprint import pprint
-pprint(readfile('data/kittens.in'))
-            
+# from pprint import pprint
+# pprint(readfile('data/kittens.in'))
