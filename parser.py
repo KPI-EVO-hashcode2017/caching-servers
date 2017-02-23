@@ -39,5 +39,5 @@ def readfile(filename):
     }
 
 
-# from pprint import pprint
-# pprint(readfile('data/kittens.in'))
+from pprint import pprint
+pprint(readfile('data/kittens.in'))
