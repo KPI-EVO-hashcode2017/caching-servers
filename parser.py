@@ -1,5 +1,5 @@
 import numpy as np
-
+import pulp
 
 def readints(line):
     return map(int, line.split(' '))
@@ -12,7 +12,7 @@ def readfile(filename):
         )
         videosizes = np.array(list(readints(next(file_in))))
         dc = np.empty(num_endpoints)
-        e2c = np.full((num_endpoints, num_caches), np.inf)
+        e2c = np.full((num_endpoints, num_caches), 0)
         e2v = np.full((num_endpoints, num_videos), 0)
 
         for e_id in range(num_endpoints):
@@ -38,5 +38,49 @@ def readfile(filename):
     }
 
 
+def get_solve(data):
+    x = []
+    for i in range(data.get('num_caches')):
+        x.append([])
+        for j in range(data.get('num_videos')):
+            x[i].append(pulp.LpVariable('x{}{}'.format(i, j), 0, 1))
+
+    prob = pulp.LpProblem('problem', pulp.LpMaximize)
+    video_sizes = data.get('video_sizes')
+    cache_sizes = data.get('cache_size')
+    dc_latency = data.get('data_center_latency')
+    latency = data.get('endpoint_cache_latency')
+    reqs = data.get('endpoint_video_requests')
+
+    for i in range(data.get('num_caches')):
+        condition = pulp.lpSum([
+            x[i][j] * video_sizes[j] for j in range(data.get('num_videos'))
+        ])
+        prob += condition <= cache_sizes, 'Sizes for {} cache'.format(i)
+
+    aim = []
+
+    for c in range(data.get('num_caches')):
+        for v in range(data.get('num_videos')):
+            for e in range(data.get('num_endpoints')):
+                aim.append(
+                    x[c][v] * (dc_latency[e] - latency[e][c]) * reqs[e][v]
+                )
+    prob += pulp.lpSum(aim)
+
+    status = prob.solve(pulp.GLPK(msg=0))
+    print(pulp.LpStatus[status])
+    res = []
+    for i in range(data.get('num_caches')):
+        res.append([])
+        for j in range(data.get('num_videos')):
+            res[i].append(pulp.value(x[i][j]))
+    results = np.array(res)
+    return results
+
+
+
 from pprint import pprint
-pprint(readfile('data/me_at_the_zoo.in'))
+# pprint(readfile('data/me_at_the_zoo.in'))
+a = readfile('data/me_at_the_zoo.in')
+pprint(get_solve(a))
