@@ -51,6 +51,7 @@ def get_solve(data):
     dc_latency = data.get('data_center_latency')
     latency = data.get('endpoint_cache_latency')
     reqs = data.get('endpoint_video_requests')
+    n_caches = data.get('num_caches')
 
     for i in range(data.get('num_caches')):
         condition = pulp.lpSum([
@@ -59,13 +60,20 @@ def get_solve(data):
         prob += condition <= cache_sizes, 'Sizes for {} cache'.format(i)
 
     aim = []
-
-    for c in range(data.get('num_caches')):
+    from math import pow
+    for e in range(data.get('num_endpoints')):
         for v in range(data.get('num_videos')):
-            for e in range(data.get('num_endpoints')):
-                aim.append(
-                    x[c][v] * (dc_latency[e] - latency[e][c]) * reqs[e][v]
-                )
+            # cache_lat = latency[e][c] or dc_latency[e]
+            # for c in range(data.get('num_caches')):
+            # print(reqs[e][v])
+            dob = reqs[e][v]
+            print(pow(dob, 1 / n_caches))
+
+            d = pulp.LpAffineExpression([
+                (x[c][v], pow(dob, 1 / n_caches) * (dc_latency[e] - (latency[e][c] or dc_latency[e])))
+                for c in range(n_caches)
+            ])
+            aim.append(d)
     prob += pulp.lpSum(aim)
 
     status = prob.solve(pulp.GLPK(msg=0))
@@ -82,5 +90,6 @@ def get_solve(data):
 
 from pprint import pprint
 # pprint(readfile('data/me_at_the_zoo.in'))
-a = readfile('data/me_at_the_zoo.in')
+a = readfile('data/example.in')
 pprint(get_solve(a))
+pprint(a.get('endpoint_video_requests'))
