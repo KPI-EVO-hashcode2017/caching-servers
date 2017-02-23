@@ -1,4 +1,3 @@
-from collections import defaultdict
 import numpy as np
 
 
@@ -40,4 +39,4 @@ def readfile(filename):
 
 
 from pprint import pprint
-pprint(readfile('data/kittens.in'))
+pprint(readfile('data/me_at_the_zoo.in'))
