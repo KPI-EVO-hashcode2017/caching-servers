@@ -52,6 +52,8 @@ def get_solve(data):
     latency = data.get('endpoint_cache_latency')
     reqs = data.get('endpoint_video_requests')
     n_caches = data.get('num_caches')
+    n_endpoints = data.get('num_endpoints')
+    n_videos = data.get('num_videos')
 
     for i in range(data.get('num_caches')):
         condition = pulp.lpSum([
@@ -67,14 +69,16 @@ def get_solve(data):
             # for c in range(data.get('num_caches')):
             # print(reqs[e][v])
             dob = reqs[e][v]
-            print(pow(dob, 1 / n_caches))
+            # print(pow(dob, 1 / n_caches))
+            # print(dob)
 
             d = pulp.LpAffineExpression([
-                (x[c][v], pow(dob, 1 / n_caches) * (dc_latency[e] - (latency[e][c] or dc_latency[e])))
+                (x[c][v], dob * (dc_latency[e] - (latency[e][c] or dc_latency[e])))
                 for c in range(n_caches)
             ])
             aim.append(d)
     prob += pulp.lpSum(aim)
+    print(12312312312, prob)
 
     status = prob.solve(pulp.GLPK(msg=0))
     print(pulp.LpStatus[status])
@@ -89,7 +93,39 @@ def get_solve(data):
 
 
 from pprint import pprint
+name = 'kittens'
 # pprint(readfile('data/me_at_the_zoo.in'))
-a = readfile('data/example.in')
-pprint(get_solve(a))
-pprint(a.get('endpoint_video_requests'))
+a = readfile('data/{}.in'.format(name))
+# print(a)
+
+n_caches = a.get('num_caches')
+n_endpoints = a.get('num_endpoints')
+n_videos = a.get('num_videos')
+
+res = list(get_solve(a))
+print(type(res))
+response = dict()
+with open('{}.txt'.format(name), 'w') as f:
+    for cache in range(n_caches):
+        print(cache)
+        caches = res[cache]
+        # assert type(caches) == list
+        print(caches)
+        videos = []
+        for index, video in enumerate(caches):
+            # print(video, index)
+            if int(video) == 1:
+                videos.append(str(int(index)))
+
+        # videos = [str(index) for video, index in enumerate(caches) if int(video) == 1]
+        print(videos)
+        if videos:
+            response[cache] = videos
+
+    n_used = len(response.keys())
+    f.write(str(n_used) + '\n')
+    for cache, videos in response.items():
+        f.write(str(cache) + ' ' + ' '.join(videos) + '\n')
+
+# pprint(res)
+# pprint(a.get('endpoint_video_requests'))
