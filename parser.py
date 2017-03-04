@@ -3,12 +3,15 @@ from pprint import pprint
 import numpy as np
 import sys
 
+MAX_ITERATIONS = 200000
+
 
 def readints(line):
     return map(int, line.split(' '))
 
 
 def readfile(filename):
+    print('readfile start')
     with open(filename, 'r') as file_in:
         num_videos, num_endpoints, req_descriptions, num_caches, capacity = (
             readints(next(file_in))
@@ -28,6 +31,7 @@ def readfile(filename):
         for _ in range(req_descriptions):
             video_id, endpoint_id, requests_num = readints(next(file_in))
             e2v[endpoint_id][video_id] = requests_num
+    print('readfile end')
             
     return {
         'cache_size': capacity,
@@ -51,25 +55,37 @@ e2c = m['endpoint_cache_latency']
 vss = m['video_sizes']
 
 
+print('e2cd build')
 e2cd = np.copy(e2c)
 for r in range(len(e2cd)):
     for c in range(len(e2cd[r])):
         if e2cd[r][c]:
             e2cd[r][c] = dcs[r] - e2cd[r][c]
 
+
 def calc_pred(diffm):
     pred = np.transpose(diffm).dot(e2v)
     return pred
 
+print('calc profit mtx')
 pred = calc_pred(e2cd)
 cache_capacity = np.full(m['num_caches'], m['cache_size'])
 cache_videos = defaultdict(list)
-while pred.argmax() > 0 :
-    me, mv = np.unravel_index(pred.argmax(), pred.shape)
+max_profit = pred.argmax()
+iter_ = 0
+while max_profit > 0:
+    iter_ += 1
+    if iter_ % 1000 == 0:
+        print('iterating: ', iter_)
+    me, mv = np.unravel_index(max_profit, pred.shape)
     if vss[mv] < cache_capacity[me]:
         cache_videos[me].append(mv)
         cache_capacity[me] -= vss[mv]
+        for i in range(len(vss)):
+            if vss[i] > cache_capacity[me]:
+                pred[me][i] = 0
     pred[me][mv] = 0
+    max_profit = pred.argmax()
 
 with open(fname + '.out', 'w') as fileout:
     fileout.write(str(len(cache_videos)))
